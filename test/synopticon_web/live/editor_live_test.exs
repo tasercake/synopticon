@@ -30,8 +30,14 @@ defmodule SynopticonWeb.EditorLiveTest do
     assert html =~ ~s(readonly="readonly")
   end
 
-  test "authenticated textarea is editable", %{conn: conn} do
-    conn = Plug.Test.init_test_session(conn, authenticated: true)
+  test "authenticated writer textarea is editable", %{conn: conn} do
+    with_writers("writer@example.com")
+
+    conn =
+      Plug.Test.init_test_session(conn,
+        authenticated: true,
+        exe_user: %{"email" => "writer@example.com"}
+      )
 
     {:ok, _view, html} = live(conn, ~p"/")
 
@@ -39,10 +45,34 @@ defmodule SynopticonWeb.EditorLiveTest do
     refute html =~ ~s(readonly="readonly")
   end
 
-  test "authenticated edits persist only for current path and update matching viewers", %{
+  test "authenticated non-writer textarea is readonly", %{conn: conn} do
+    with_writers("writer@example.com")
+
+    conn =
+      Plug.Test.init_test_session(conn,
+        authenticated: true,
+        exe_user: %{"email" => "other@example.com"}
+      )
+
+    {:ok, view, html} = live(conn, ~p"/")
+
+    assert html =~ "<textarea"
+    assert html =~ ~s(readonly="readonly")
+
+    render_hook(view, "save", %{"content" => "blocked"})
+    assert ContentStore.get("/") == ""
+  end
+
+  test "authenticated writer edits persist only for current path and update matching viewers", %{
     conn: conn
   } do
-    conn = Plug.Test.init_test_session(conn, authenticated: true)
+    with_writers("writer@example.com")
+
+    conn =
+      Plug.Test.init_test_session(conn,
+        authenticated: true,
+        exe_user: %{"email" => "writer@example.com"}
+      )
 
     {:ok, notes_editor, _html} = live(conn, "/notes")
     {:ok, notes_viewer, _html} = live(conn, "/notes")
@@ -56,5 +86,21 @@ defmodule SynopticonWeb.EditorLiveTest do
     assert ContentStore.get("/other") == ""
     assert render(notes_viewer) =~ "notes body"
     refute render(other_viewer) =~ "notes body"
+  end
+
+  defp with_writers(content) do
+    path =
+      Path.join(
+        System.tmp_dir!(),
+        "synopticon-live-writers-#{System.unique_integer([:positive])}.txt"
+      )
+
+    File.write!(path, content)
+    Application.put_env(:synopticon, :writers_path, path)
+
+    on_exit(fn ->
+      Application.delete_env(:synopticon, :writers_path)
+      File.rm(path)
+    end)
   end
 end

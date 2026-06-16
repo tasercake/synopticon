@@ -14,6 +14,12 @@ Open <http://localhost:3000/>.
 
 Synopticon loads `.env` from the current app directory at startup for optional local environment variables. No password variable is required.
 
+## Local configuration
+
+Copy `config/local.example/` to `config/local/` for private local configuration. `config/local/` is git-ignored; do not commit real emails.
+
+`config/local/writers.txt` grants edit permission. Put one allowed writer email per line. Blank lines and lines starting with `#` or `//` are ignored. Email matching is case-insensitive. Missing file means no configured writers.
+
 ## Login with exe
 
 - Development uses a fake `Login with exe` flow. Clicking `/login` signs in as `dev@example.com` with user id `dev-user-1234`, matching the session shape used by real exe headers.
