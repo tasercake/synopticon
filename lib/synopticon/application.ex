@@ -7,6 +7,8 @@ defmodule Synopticon.Application do
 
   @impl true
   def start(_type, _args) do
+    Synopticon.Env.load_and_configure!()
+
     children = [
       SynopticonWeb.Telemetry,
       {DNSCluster, query: Application.get_env(:synopticon, :dns_cluster_query) || :ignore},
