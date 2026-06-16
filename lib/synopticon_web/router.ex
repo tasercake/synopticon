@@ -18,7 +18,7 @@ defmodule SynopticonWeb.Router do
     pipe_through :browser
 
     live "/", EditorLive
-    post "/login", SessionController, :create
+    get "/login", SessionController, :login
     live "/*path", EditorLive
   end
 

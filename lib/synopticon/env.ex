@@ -1,8 +1,6 @@
 defmodule Synopticon.Env do
   @moduledoc false
 
-  @password_env "SYNOPTICON_PASSWORD"
-
   def load_dotenv(dir \\ File.cwd!()) do
     path = Path.join(dir, ".env")
 
@@ -15,20 +13,8 @@ defmodule Synopticon.Env do
     :ok
   end
 
-  def configure_password! do
-    case System.get_env(@password_env) do
-      password when is_binary(password) and password != "" ->
-        Application.put_env(:synopticon, :password, password)
-        :ok
-
-      _ ->
-        raise "environment variable #{@password_env} is missing. Set it in the environment or local .env before starting Synopticon."
-    end
-  end
-
   def load_and_configure! do
     load_dotenv()
-    configure_password!()
   end
 
   defp load_dotenv_line(line) do

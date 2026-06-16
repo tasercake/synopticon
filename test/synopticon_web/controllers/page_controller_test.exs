@@ -6,7 +6,7 @@ defmodule SynopticonWeb.PageControllerTest do
     response = html_response(conn, 200)
 
     assert response =~ "<textarea"
-    assert response =~ "password"
-    assert response =~ "log in"
+    refute response =~ "password"
+    assert response =~ "Login with exe"
   end
 end
