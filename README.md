@@ -6,12 +6,14 @@ Minimal Phoenix LiveView in-memory editor.
 
 ```bash
 mix deps.get
+cp .env.example .env
+# edit .env and set a real password
 mix phx.server
 ```
 
 Open <http://localhost:3000/>.
 
-Hardcoded password: `synopticon`
+Synopticon loads `.env` from the current app directory at startup and requires `SYNOPTICON_PASSWORD` to be set. Startup fails if the password is missing.
 
 ## Behavior
 

@@ -1,5 +1,7 @@
 import Config
 
+System.put_env("SYNOPTICON_PASSWORD", System.get_env("SYNOPTICON_PASSWORD") || "test-password")
+
 # We don't run a server during test. If one is required,
 # you can enable the server option below.
 config :synopticon, SynopticonWeb.Endpoint,
