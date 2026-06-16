@@ -39,3 +39,6 @@ npm-debug.log
 /assets/node_modules/
 /.worktrees/
 
+
+# Local private config.
+/config/local/

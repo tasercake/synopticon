@@ -2,6 +2,7 @@ defmodule SynopticonWeb.EditorLive do
   use SynopticonWeb, :live_view
 
   alias Synopticon.ContentStore
+  alias Synopticon.Writers
 
   @impl true
   def mount(params, session, socket) do
@@ -15,7 +16,8 @@ defmodule SynopticonWeb.EditorLive do
         path: path,
         content: ContentStore.get(path),
         authenticated: Map.get(session, "authenticated", false),
-        exe_user: Map.get(session, "exe_user")
+        exe_user: Map.get(session, "exe_user"),
+        writer?: writer?(session)
       )
 
     {:ok, socket}
@@ -25,7 +27,7 @@ defmodule SynopticonWeb.EditorLive do
   def handle_event(
         "save",
         %{"content" => content},
-        %{assigns: %{authenticated: true, path: path}} = socket
+        %{assigns: %{writer?: true, path: path}} = socket
       ) do
     ContentStore.set(path, content)
     {:noreply, assign(socket, :content, content)}
@@ -41,12 +43,17 @@ defmodule SynopticonWeb.EditorLive do
   defp document_path(%{"path" => parts}), do: "/" <> Enum.join(parts, "/")
   defp document_path(_params), do: "/"
 
+  defp writer?(%{"authenticated" => true, "exe_user" => %{"email" => email}}),
+    do: Writers.authorized?(email)
+
+  defp writer?(_session), do: false
+
   @impl true
   def render(assigns) do
     ~H"""
     <div style="min-height: 100vh; display: flex; flex-direction: column; margin: 0;">
       <.form
-        :if={@authenticated}
+        :if={@writer?}
         for={%{}}
         as={:editor}
         id="editor-form"
@@ -57,7 +64,7 @@ defmodule SynopticonWeb.EditorLive do
       </.form>
 
       <textarea
-        :if={!@authenticated}
+        :if={!@writer?}
         name="content"
         readonly="readonly"
         style="flex: 1; width: 100%; resize: none; border: 0; padding: 8px;"
@@ -65,7 +72,8 @@ defmodule SynopticonWeb.EditorLive do
 
       <div id="login-bar" style="display: flex; gap: 4px; padding: 4px;">
         <a :if={!@authenticated} href="/login">Login with exe</a>
-        <span :if={@authenticated}>authenticated as {@exe_user["email"]}</span>
+        <span :if={@authenticated and @writer?}>authenticated as {@exe_user["email"]}</span>
+        <span :if={@authenticated and !@writer?}>authenticated as {@exe_user["email"]} (read only)</span>
       </div>
     </div>
     """
