@@ -15,7 +15,7 @@ defmodule SynopticonWeb.EditorLive do
         path: path,
         content: ContentStore.get(path),
         authenticated: Map.get(session, "authenticated", false),
-        password_error: Map.get(session, "password_error", false)
+        exe_user: Map.get(session, "exe_user")
       )
 
     {:ok, socket}
@@ -62,18 +62,10 @@ defmodule SynopticonWeb.EditorLive do
         style="flex: 1; width: 100%; resize: none; border: 0; padding: 8px;"
       ><%= @content %></textarea>
 
-      <form
-        id="login-form"
-        action="/login"
-        method="post"
-        style="display: flex; gap: 4px; padding: 4px;"
-      >
-        <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
-        <input type="password" name="password" placeholder="password" />
-        <button type="submit">log in</button>
-        <span :if={@authenticated}>authenticated</span>
-        <span :if={@password_error}>wrong password</span>
-      </form>
+      <div id="login-bar" style="display: flex; gap: 4px; padding: 4px;">
+        <a :if={!@authenticated} href="/login">Login with exe</a>
+        <span :if={@authenticated}>authenticated as {@exe_user["email"]}</span>
+      </div>
     </div>
     """
   end

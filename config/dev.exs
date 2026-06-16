@@ -1,5 +1,7 @@
 import Config
 
+config :synopticon, :login_mode, :dev_fake
+
 # For development, we disable any cache and enable
 # debugging and code reloading.
 #
