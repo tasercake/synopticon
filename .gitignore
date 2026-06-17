@@ -29,7 +29,7 @@ erl_crash.dump
 .env
 
 # Ignore package tarball (built via "mix hex.build").
-synopticon-*.tar
+unfinal-*.tar
 
 # Ignore assets that are produced by build tools.
 /priv/static/assets/

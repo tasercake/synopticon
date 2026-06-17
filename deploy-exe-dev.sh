@@ -29,7 +29,7 @@ append_env_if_missing() {
   fi
 }
 
-SERVICE_NAME=${SERVICE_NAME:-synopticon}
+SERVICE_NAME=${SERVICE_NAME:-unfinal}
 APP_DIR=${APP_DIR:-$(pwd -P)}
 PHX_HOST=${PHX_HOST:-$(hostname).exe.xyz}
 PORT=${PORT:-8000}
@@ -99,7 +99,7 @@ log "write systemd service ${SERVICE_FILE}"
 tmp_service=$(mktemp)
 cat >"${tmp_service}" <<EOF_SERVICE
 [Unit]
-Description=Synopticon Phoenix app
+Description=Unfinal Phoenix app
 After=network.target
 
 [Service]

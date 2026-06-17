@@ -7,24 +7,24 @@
 # General application configuration
 import Config
 
-config :synopticon,
+config :unfinal,
   generators: [timestamp_type: :utc_datetime]
 
 # Configures the endpoint
-config :synopticon, SynopticonWeb.Endpoint,
+config :unfinal, UnfinalWeb.Endpoint,
   url: [host: "localhost"],
   adapter: Bandit.PhoenixAdapter,
   render_errors: [
-    formats: [html: SynopticonWeb.ErrorHTML, json: SynopticonWeb.ErrorJSON],
+    formats: [html: UnfinalWeb.ErrorHTML, json: UnfinalWeb.ErrorJSON],
     layout: false
   ],
-  pubsub_server: Synopticon.PubSub,
+  pubsub_server: Unfinal.PubSub,
   live_view: [signing_salt: "tz5l3+9F"]
 
 # Configure esbuild (the version is required)
 config :esbuild,
   version: "0.17.11",
-  synopticon: [
+  unfinal: [
     args:
       ~w(js/app.js --bundle --target=es2017 --outdir=../priv/static/assets --external:/fonts/* --external:/images/*),
     cd: Path.expand("../assets", __DIR__),
@@ -34,7 +34,7 @@ config :esbuild,
 # Configure tailwind (the version is required)
 config :tailwind,
   version: "3.4.3",
-  synopticon: [
+  unfinal: [
     args: ~w(
       --config=tailwind.config.js
       --input=css/app.css
