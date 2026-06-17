@@ -1,6 +1,6 @@
 import Config
 
-config :synopticon, :login_mode, :dev_fake
+config :unfinal, :login_mode, :dev_fake
 
 # For development, we disable any cache and enable
 # debugging and code reloading.
@@ -8,7 +8,7 @@ config :synopticon, :login_mode, :dev_fake
 # The watchers configuration can be used to run external
 # watchers to your application. For example, we can use it
 # to bundle .js and .css sources.
-config :synopticon, SynopticonWeb.Endpoint,
+config :unfinal, UnfinalWeb.Endpoint,
   # Binding to loopback ipv4 address prevents access from other machines.
   # Change to `ip: {0, 0, 0, 0}` to allow access from other machines.
   http: [ip: {127, 0, 0, 1}, port: 3000],
@@ -17,8 +17,8 @@ config :synopticon, SynopticonWeb.Endpoint,
   debug_errors: true,
   secret_key_base: "bmnWHmDjuVgDmORE0JKtxfEACZ/GGgLjfsviiqwhWnfI41u/w1WStO7BdFcxcTuM",
   watchers: [
-    esbuild: {Esbuild, :install_and_run, [:synopticon, ~w(--sourcemap=inline --watch)]},
-    tailwind: {Tailwind, :install_and_run, [:synopticon, ~w(--watch)]}
+    esbuild: {Esbuild, :install_and_run, [:unfinal, ~w(--sourcemap=inline --watch)]},
+    tailwind: {Tailwind, :install_and_run, [:unfinal, ~w(--watch)]}
   ]
 
 # ## SSL Support
@@ -45,17 +45,17 @@ config :synopticon, SynopticonWeb.Endpoint,
 # different ports.
 
 # Watch static and templates for browser reloading.
-config :synopticon, SynopticonWeb.Endpoint,
+config :unfinal, UnfinalWeb.Endpoint,
   live_reload: [
     patterns: [
       ~r"priv/static/(?!uploads/).*(js|css|png|jpeg|jpg|gif|svg)$",
       ~r"priv/gettext/.*(po)$",
-      ~r"lib/synopticon_web/(controllers|live|components)/.*(ex|heex)$"
+      ~r"lib/unfinal_web/(controllers|live|components)/.*(ex|heex)$"
     ]
   ]
 
 # Enable dev routes for dashboard and mailbox
-config :synopticon, dev_routes: true
+config :unfinal, dev_routes: true
 
 # Do not include metadata nor timestamps in development logs
 config :logger, :console, format: "[$level] $message\n"

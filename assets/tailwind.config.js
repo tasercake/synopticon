@@ -8,8 +8,8 @@ const path = require("path")
 module.exports = {
   content: [
     "./js/**/*.js",
-    "../lib/synopticon_web.ex",
-    "../lib/synopticon_web/**/*.*ex"
+    "../lib/unfinal_web.ex",
+    "../lib/unfinal_web/**/*.*ex"
   ],
   theme: {
     extend: {

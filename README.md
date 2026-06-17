@@ -1,4 +1,4 @@
-# Synopticon
+# Unfinal
 
 Anti-draft public live-writing tool for fighting perfectionism: if text exists, it is already out there.
 
