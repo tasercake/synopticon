@@ -147,7 +147,7 @@ defmodule SynopticonWeb.EditorLive do
           class="hidden py-6 text-left text-sm text-stone-600 lg:block"
         >
           <h2 class="mb-3 text-xs font-semibold uppercase tracking-wide text-stone-500">
-            Blank pages
+            Write somewhere new
           </h2>
           <nav aria-label="Blank pages">
             <ul class="space-y-2">
