@@ -5,11 +5,11 @@ defmodule UnfinalWeb.ClaimLive do
 
   @impl true
   def mount(_params, session, socket) do
-    with %{"authenticated" => true, "exe_user" => %{"id" => user_id} = user} <- session do
+    with %{"authenticated" => true, "exe_user" => %{"email" => email} = user} <- session do
       {:ok,
        assign(socket,
          user: user,
-         claimed_namespace: NamespaceStore.namespace_for_user(user_id),
+         claimed_namespace: NamespaceStore.namespace_for_email(email),
          namespace: "",
          message: nil,
          error: nil
@@ -49,7 +49,7 @@ defmodule UnfinalWeb.ClaimLive do
          )}
 
       {:error, :already_claimed} ->
-        claimed = NamespaceStore.namespace_for_user(socket.assigns.user["id"])
+        claimed = NamespaceStore.namespace_for_email(socket.assigns.user["email"])
         {:noreply, assign(socket, claimed_namespace: claimed, error: nil, message: nil)}
     end
   end

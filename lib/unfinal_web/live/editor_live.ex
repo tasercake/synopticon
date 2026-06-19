@@ -78,8 +78,8 @@ defmodule UnfinalWeb.EditorLive do
 
   defp superuser?(_session), do: false
 
-  defp claimed_namespace(%{"authenticated" => true, "exe_user" => %{"id" => user_id}}),
-    do: NamespaceStore.namespace_for_user(user_id)
+  defp claimed_namespace(%{"authenticated" => true, "exe_user" => %{"email" => email}}),
+    do: NamespaceStore.namespace_for_email(email)
 
   defp claimed_namespace(_session), do: nil
 
