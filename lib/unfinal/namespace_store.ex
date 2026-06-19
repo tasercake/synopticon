@@ -6,9 +6,8 @@ defmodule Unfinal.NamespaceStore do
   use GenServer
 
   @type namespace :: String.t()
-  @type user_id :: String.t()
   @type email :: String.t()
-  @type owner :: %{user_id: user_id(), email: email()}
+  @type owner :: %{email: email()}
   @type state :: %{namespace() => owner()}
 
   @spec start_link(term()) :: GenServer.on_start()
@@ -21,9 +20,8 @@ defmodule Unfinal.NamespaceStore do
   def valid_namespace?(_namespace), do: false
 
   @spec claim(namespace(), map()) :: :ok | {:error, :invalid | :taken | :already_claimed}
-  def claim(namespace, %{"id" => user_id, "email" => email})
-      when is_binary(user_id) and is_binary(email) do
-    GenServer.call(__MODULE__, {:claim, namespace, user_id, email})
+  def claim(namespace, %{"email" => email}) when is_binary(email) do
+    GenServer.call(__MODULE__, {:claim, namespace, email})
   end
 
   def claim(_namespace, _user), do: {:error, :invalid}
@@ -34,11 +32,11 @@ defmodule Unfinal.NamespaceStore do
   @spec taken?(namespace()) :: boolean()
   def taken?(namespace), do: not is_nil(owner(namespace))
 
-  @spec namespace_for_user(user_id()) :: namespace() | nil
-  def namespace_for_user(user_id) when is_binary(user_id),
-    do: GenServer.call(__MODULE__, {:namespace_for_user, user_id})
+  @spec namespace_for_email(email()) :: namespace() | nil
+  def namespace_for_email(email) when is_binary(email),
+    do: GenServer.call(__MODULE__, {:namespace_for_email, email})
 
-  def namespace_for_user(_user_id), do: nil
+  def namespace_for_email(_email), do: nil
 
   @spec clear() :: :ok
   def clear, do: GenServer.call(__MODULE__, :clear)
@@ -47,19 +45,19 @@ defmodule Unfinal.NamespaceStore do
   def init(_state), do: {:ok, read_all()}
 
   @impl true
-  def handle_call({:claim, namespace, user_id, email}, _from, state) do
+  def handle_call({:claim, namespace, email}, _from, state) do
     cond do
       not valid_namespace?(namespace) ->
         {:reply, {:error, :invalid}, state}
 
-      namespace_for_user(state, user_id) ->
+      namespace_for_email(state, email) ->
         {:reply, {:error, :already_claimed}, state}
 
       Map.has_key?(state, namespace) ->
         {:reply, {:error, :taken}, state}
 
       true ->
-        state = Map.put(state, namespace, %{user_id: user_id, email: email})
+        state = Map.put(state, namespace, %{email: email})
         :ok = write_all(state)
         {:reply, :ok, state}
     end
@@ -70,17 +68,17 @@ defmodule Unfinal.NamespaceStore do
     {:reply, Map.get(state, namespace), state}
   end
 
-  def handle_call({:namespace_for_user, user_id}, _from, state) do
+  def handle_call({:namespace_for_email, email}, _from, state) do
     state = reload(state)
-    {:reply, namespace_for_user(state, user_id), state}
+    {:reply, namespace_for_email(state, email), state}
   end
 
   def handle_call(:clear, _from, _state), do: {:reply, :ok, %{}}
 
-  @spec namespace_for_user(state(), user_id()) :: namespace() | nil
-  defp namespace_for_user(state, user_id) do
+  @spec namespace_for_email(state(), email()) :: namespace() | nil
+  defp namespace_for_email(state, email) do
     Enum.find_value(state, fn {namespace, owner} ->
-      if owner.user_id == user_id, do: namespace
+      if owner.email == email, do: namespace
     end)
   end
 
@@ -101,7 +99,7 @@ defmodule Unfinal.NamespaceStore do
     |> String.split(["\r\n", "\n", "\r"], trim: true)
     |> Enum.reduce(%{}, fn line, acc ->
       case String.split(line, "\t", parts: 3) do
-        [namespace, user_id, email] -> Map.put(acc, namespace, %{user_id: user_id, email: email})
+        [namespace, email] -> Map.put(acc, namespace, %{email: email})
         _parts -> acc
       end
     end)
@@ -116,7 +114,7 @@ defmodule Unfinal.NamespaceStore do
       state
       |> Enum.sort_by(fn {namespace, _owner} -> namespace end)
       |> Enum.map_join("", fn {namespace, owner} ->
-        "#{namespace}\t#{owner.user_id}\t#{owner.email}\n"
+        "#{namespace}\t#{owner.email}\n"
       end)
 
     File.write!(path, content)

@@ -56,13 +56,13 @@ defmodule UnfinalWeb.ClaimLiveTest do
              |> form("#claim-form", claim: %{namespace: "alpha1"})
              |> render_submit()
 
-    assert NamespaceStore.namespace_for_user("user-1") == "alpha1"
+    assert NamespaceStore.namespace_for_email("one@example.com") == "alpha1"
   end
 
-  test "already claimed users cannot change namespace", %{conn: conn} do
+  test "already claimed emails cannot change namespace", %{conn: conn} do
     :ok = NamespaceStore.claim("alpha", %{"id" => "user-1", "email" => "one@example.com"})
 
-    conn = logged_in(conn, "user-1", "one@example.com")
+    conn = logged_in(conn, "different-user-id", "one@example.com")
     {:ok, _view, html} = live(conn, ~p"/claim")
 
     assert html =~ "You already claimed"

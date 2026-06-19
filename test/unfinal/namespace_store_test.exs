@@ -38,27 +38,27 @@ defmodule Unfinal.NamespaceStoreTest do
     end
   end
 
-  test "claims one namespace per user and persists it", %{data_dir: data_dir} do
+  test "claims one namespace per email and persists namespace tab email", %{data_dir: data_dir} do
     user = %{"id" => "user-1", "email" => "one@example.com"}
 
     assert NamespaceStore.claim("alpha1", user) == :ok
-    assert NamespaceStore.owner("alpha1") == %{user_id: "user-1", email: "one@example.com"}
-    assert NamespaceStore.namespace_for_user("user-1") == "alpha1"
+    assert NamespaceStore.owner("alpha1") == %{email: "one@example.com"}
+    assert NamespaceStore.namespace_for_email("one@example.com") == "alpha1"
 
     assert File.read!(Path.join(data_dir, "namespaces.txt")) ==
-             "alpha1\tuser-1\tone@example.com\n"
+             "alpha1\tone@example.com\n"
 
     NamespaceStore.clear()
-    assert NamespaceStore.owner("alpha1") == %{user_id: "user-1", email: "one@example.com"}
+    assert NamespaceStore.owner("alpha1") == %{email: "one@example.com"}
   end
 
-  test "prevents taken namespaces and second claims" do
+  test "prevents taken namespaces and second claims by same email" do
     assert NamespaceStore.claim("alpha", %{"id" => "user-1", "email" => "one@example.com"}) == :ok
 
     assert NamespaceStore.claim("alpha", %{"id" => "user-2", "email" => "two@example.com"}) ==
              {:error, :taken}
 
-    assert NamespaceStore.claim("beta", %{"id" => "user-1", "email" => "one@example.com"}) ==
+    assert NamespaceStore.claim("beta", %{"id" => "user-2", "email" => "one@example.com"}) ==
              {:error, :already_claimed}
   end
 end

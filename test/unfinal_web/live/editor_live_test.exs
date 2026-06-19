@@ -93,7 +93,7 @@ defmodule UnfinalWeb.EditorLiveTest do
     data_dir: data_dir
   } do
     :ok = NamespaceStore.claim("alpha", %{"id" => "owner", "email" => "owner@example.com"})
-    conn = logged_in(conn, "owner", "owner@example.com")
+    conn = logged_in(conn, "different-owner-id", "owner@example.com")
 
     {:ok, root, root_html} = live(conn, ~p"/n")
     {:ok, namespace, namespace_html} = live(conn, "/n/alpha")
@@ -136,7 +136,7 @@ defmodule UnfinalWeb.EditorLiveTest do
   test "claimed user sees generated blank page links under namespace", %{conn: conn} do
     :ok = NamespaceStore.claim("alpha", %{"id" => "owner", "email" => "owner@example.com"})
     with_blank_page_paths(["bluebird", "rainriver", "moonstone", "greenfield", "sunwind"])
-    conn = logged_in(conn, "owner", "owner@example.com")
+    conn = logged_in(conn, "different-owner-id", "owner@example.com")
 
     {:ok, view, _html} = live(conn, "/n/alpha")
     rendered = render(view)
