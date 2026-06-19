@@ -27,11 +27,12 @@ defmodule UnfinalWeb.EditorLiveTest do
       end
     end)
 
-    :ok
+    {:ok, data_dir: data_dir}
   end
 
-  test "redirects slash to /n and renders /n document paths", %{conn: conn} do
-    ContentStore.set("/n/existing", "saved text")
+  test "redirects slash to /n and renders storage paths without /n prefix", %{conn: conn} do
+    ContentStore.set("/", "root text")
+    ContentStore.set("/existing", "saved text")
 
     assert {:error, {:redirect, %{to: "/n"}}} = live(conn, ~p"/")
     {:ok, root, root_html} = live(conn, ~p"/n")
@@ -40,8 +41,9 @@ defmodule UnfinalWeb.EditorLiveTest do
 
     assert root_html =~ ~s(<article id="readonly-document")
     assert notes_html =~ ~s(<article id="readonly-document")
+    assert root_html =~ "root text"
     assert existing_html =~ "saved text"
-    refute render(root) =~ "saved text"
+    assert render(root) =~ "root text"
     refute render(notes) =~ "saved text"
     assert render(existing) =~ "saved text"
   end
@@ -59,14 +61,14 @@ defmodule UnfinalWeb.EditorLiveTest do
   end
 
   test "readonly document does not add template whitespace to content", %{conn: conn} do
-    ContentStore.set("/n/plain", "hello")
+    ContentStore.set("/plain", "hello")
 
     {:ok, _view, html} = live(conn, "/n/plain")
 
     assert html =~ ~r/<article[^>]*id="readonly-document"[^>]*>hello<\/article>/
   end
 
-  test "superuser edits only /n root", %{conn: conn} do
+  test "superuser edits only /n root", %{conn: conn, data_dir: data_dir} do
     with_writers("writer@example.com")
     conn = logged_in(conn, "writer", "writer@example.com")
 
@@ -79,11 +81,17 @@ defmodule UnfinalWeb.EditorLiveTest do
     root |> form("form[phx-change=save]", %{content: "root body"}) |> render_change()
     render_hook(child, "save", %{"content" => "blocked"})
 
-    assert ContentStore.get("/n") == "root body"
-    assert ContentStore.get("/n/alpha") == ""
+    assert ContentStore.get("/") == "root body"
+    assert ContentStore.get("/n") == ""
+    assert ContentStore.get("/alpha") == ""
+    assert File.read!(document_file(data_dir, "/")) == "root body"
+    refute File.exists?(document_file(data_dir, "/n"))
   end
 
-  test "namespace owner edits own namespace and descendants but not root", %{conn: conn} do
+  test "namespace owner edits own namespace and descendants but not root", %{
+    conn: conn,
+    data_dir: data_dir
+  } do
     :ok = NamespaceStore.claim("alpha", %{"id" => "owner", "email" => "owner@example.com"})
     conn = logged_in(conn, "owner", "owner@example.com")
 
@@ -102,10 +110,15 @@ defmodule UnfinalWeb.EditorLiveTest do
     render_hook(root, "save", %{"content" => "blocked"})
     render_hook(other, "save", %{"content" => "blocked"})
 
-    assert ContentStore.get("/n/alpha") == "home"
-    assert ContentStore.get("/n/alpha/page") == "child"
-    assert ContentStore.get("/n") == ""
-    assert ContentStore.get("/n/beta") == ""
+    assert ContentStore.get("/alpha") == "home"
+    assert ContentStore.get("/alpha/page") == "child"
+    assert ContentStore.get("/") == ""
+    assert ContentStore.get("/beta") == ""
+    assert ContentStore.get("/n/alpha") == ""
+    assert ContentStore.get("/n/alpha/page") == ""
+    assert File.read!(document_file(data_dir, "/alpha")) == "home"
+    assert File.read!(document_file(data_dir, "/alpha/page")) == "child"
+    refute File.exists?(document_file(data_dir, "/n/alpha"))
   end
 
   test "unclaimed logged-in user sees claim link instead of blank page links", %{conn: conn} do
@@ -143,6 +156,11 @@ defmodule UnfinalWeb.EditorLiveTest do
            |> Enum.all?(fn path ->
              Regex.match?(~r/^(#{dictionary_pattern})(#{dictionary_pattern})$/, path)
            end)
+  end
+
+  defp document_file(data_dir, path) do
+    hash = :crypto.hash(:sha256, path) |> Base.encode16(case: :lower)
+    Path.join([data_dir, "documents", hash <> ".txt"])
   end
 
   defp logged_in(conn, id, email) do

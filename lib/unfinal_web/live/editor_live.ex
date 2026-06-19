@@ -13,9 +13,11 @@ defmodule UnfinalWeb.EditorLive do
 
   @impl true
   def mount(params, session, socket) do
-    path = document_path(params)
+    path = url_path(params)
+    storage_path = storage_path(params)
 
-    if connected?(socket), do: Phoenix.PubSub.subscribe(Unfinal.PubSub, ContentStore.topic(path))
+    if connected?(socket),
+      do: Phoenix.PubSub.subscribe(Unfinal.PubSub, ContentStore.topic(storage_path))
 
     claimed_namespace = claimed_namespace(session)
     writer? = writer?(path, session, claimed_namespace)
@@ -23,7 +25,8 @@ defmodule UnfinalWeb.EditorLive do
     socket =
       assign(socket,
         path: path,
-        content: ContentStore.get(path),
+        storage_path: storage_path,
+        content: ContentStore.get(storage_path),
         authenticated: Map.get(session, "authenticated", false),
         exe_user: Map.get(session, "exe_user"),
         claimed_namespace: claimed_namespace,
@@ -40,21 +43,27 @@ defmodule UnfinalWeb.EditorLive do
   def handle_event(
         "save",
         %{"content" => content},
-        %{assigns: %{writer?: true, path: path}} = socket
+        %{assigns: %{writer?: true, storage_path: storage_path}} = socket
       ) do
-    ContentStore.set(path, content)
+    ContentStore.set(storage_path, content)
     {:noreply, assign(socket, :content, content)}
   end
 
   def handle_event("save", _params, socket), do: {:noreply, socket}
 
   @impl true
-  def handle_info({:content_updated, path, content}, %{assigns: %{path: path}} = socket) do
+  def handle_info(
+        {:content_updated, storage_path, content},
+        %{assigns: %{storage_path: storage_path}} = socket
+      ) do
     {:noreply, assign(socket, :content, content)}
   end
 
-  defp document_path(%{"path" => parts}), do: "/n/" <> Enum.join(parts, "/")
-  defp document_path(_params), do: "/n"
+  defp url_path(%{"path" => parts}), do: "/n/" <> Enum.join(parts, "/")
+  defp url_path(_params), do: "/n"
+
+  defp storage_path(%{"path" => parts}), do: "/" <> Enum.join(parts, "/")
+  defp storage_path(_params), do: "/"
 
   defp writer?("/n", session, _claimed_namespace), do: superuser?(session)
 
