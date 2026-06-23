@@ -22,7 +22,7 @@ jobs:
 
       - name: Run remote deploy script
         run: |
-          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p 22 "exedev@synopticon.exe.xyz" '
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p 22 "${{ secrets.EXE_DEV_HOST }}" '
             set -euo pipefail
             cd /home/exedev/unfinal
             git fetch origin main
