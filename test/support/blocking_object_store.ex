@@ -33,7 +33,7 @@ defmodule Unfinal.BlockingObjectStore do
     end
   end
 
-  def start_link(_opts), do: Agent.start_link(fn -> self() end, name: __MODULE__)
+  def start_link(_opts), do: Agent.start(fn -> self() end, name: __MODULE__)
 
   defp parent, do: Agent.get(__MODULE__, & &1)
 end
