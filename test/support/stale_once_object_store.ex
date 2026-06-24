@@ -41,6 +41,10 @@ defmodule Unfinal.StaleOnceObjectStore do
     end)
   end
 
+  def get_object(key), do: Unfinal.FakeObjectStore.get_object(key)
+
+  def put_object(key, content), do: Unfinal.FakeObjectStore.put_object(key, content)
+
   @impl true
   def delete(path, base_etag, base_revision) do
     Agent.get_and_update(__MODULE__, fn state ->
