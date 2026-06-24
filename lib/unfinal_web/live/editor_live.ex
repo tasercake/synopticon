@@ -160,13 +160,13 @@ defmodule UnfinalWeb.EditorLive do
 
   defp root_page_path(_segments, _current_path, _connected?), do: nil
 
-  defp page_paths([namespace | _rest], current_path) do
+  defp page_paths([namespace | _rest], _current_path) do
     root_path = namespace_path(namespace, "/")
 
     namespace
     |> PageIndex.list()
     |> Enum.map(&namespace_path(namespace, &1.path))
-    |> Enum.reject(&(&1 in [current_path, root_path]))
+    |> Enum.reject(&(&1 == root_path))
   end
 
   defp page_paths(_segments, _current_path), do: []
@@ -251,7 +251,7 @@ defmodule UnfinalWeb.EditorLive do
               </.form>
 
               <a
-                :if={@path != @root_page_path}
+                :if={@path != @root_page_path and not (@path in @page_paths)}
                 class="block rounded-lg bg-white/70 px-3 py-2 font-medium text-stone-950 shadow-sm shadow-stone-200/50"
                 href={@path}
               >
@@ -260,7 +260,11 @@ defmodule UnfinalWeb.EditorLive do
 
               <a
                 :for={path <- @page_paths}
-                class="block rounded-lg px-3 py-1.5 hover:bg-white/50 hover:text-stone-950"
+                class={[
+                  "block rounded-lg px-3 py-1.5 hover:bg-white/50 hover:text-stone-950",
+                  path == @path &&
+                    "bg-white/70 py-2 font-medium text-stone-950 shadow-sm shadow-stone-200/50"
+                ]}
                 href={path}
               >
                 {display_page_path(path)}

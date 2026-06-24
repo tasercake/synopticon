@@ -241,8 +241,8 @@ defmodule UnfinalWeb.EditorLiveTest do
 
     assert Enum.map(links, &Floki.attribute(&1, "href")) == [
              ["/n/alpha"],
-             ["/n/alpha/bluebird"],
-             ["/n/alpha/rainriver"]
+             ["/n/alpha/rainriver"],
+             ["/n/alpha/bluebird"]
            ]
   end
 
