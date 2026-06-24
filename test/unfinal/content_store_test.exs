@@ -9,7 +9,6 @@ defmodule Unfinal.ContentStoreTest do
 
     on_exit(fn ->
       ContentStore.clear()
-      Application.delete_env(:unfinal, :object_store_adapter)
     end)
   end
 
