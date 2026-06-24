@@ -173,6 +173,24 @@ defmodule UnfinalWeb.EditorLiveTest do
     refute links |> Floki.text() =~ "/n/alpha/rainriver"
   end
 
+  test "claimed user sees indexed current page only once in sidebar", %{conn: conn} do
+    :ok = NamespaceStore.claim("alpha", %{"id" => "owner", "email" => "owner@example.com"})
+    :ok = Unfinal.PageIndex.upsert("alpha", "/bluebird", ~U[2026-06-24 00:00:00Z])
+    :ok = Unfinal.PageIndex.upsert("alpha", "/rainriver", ~U[2026-06-25 00:00:00Z])
+    conn = logged_in(conn, "different-owner-id", "owner@example.com")
+
+    {:ok, view, _html} = live(conn, "/n/alpha/bluebird")
+
+    current_page_link_count =
+      view
+      |> render()
+      |> String.split(~s(href="/n/alpha/bluebird"))
+      |> length()
+      |> Kernel.-(1)
+
+    assert current_page_link_count == 1
+  end
+
   test "writer save updates namespace page index", %{conn: conn} do
     :ok = NamespaceStore.claim("alpha", %{"id" => "owner", "email" => "owner@example.com"})
     conn = logged_in(conn, "owner", "owner@example.com")
