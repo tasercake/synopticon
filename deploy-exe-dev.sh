@@ -33,20 +33,34 @@ quote_shell() {
   printf '%q' "$1"
 }
 
-check_writable_dir() {
+check_generated_dir_writable() {
   local dir=$1
+  local owner
+  local group
+  local uid
+  local bad_path
 
-  if [[ -d "${dir}" && ! -w "${dir}" ]]; then
-    printf 'Directory exists but is not writable by %s: %s\n' "$(id -un)" "${dir}" >&2
-    printf 'Fix ownership, then rerun: sudo chown -R %s:%s %s\n' "$(id -un)" "$(id -gn)" "$(quote_shell "${dir}")" >&2
+  [[ -d "${dir}" ]] || return 0
+
+  owner=$(id -un)
+  group=$(id -gn)
+  uid=$(id -u)
+  bad_path=$(find "${dir}" \( -type d -o -type f \) \( ! -user "${uid}" -o ! -writable \) -print -quit)
+
+  if [[ -n "${bad_path}" ]]; then
+    printf 'Generated dir failed permission check: %s\n' "${dir}" >&2
+    printf 'Offending path: %s\n' "${bad_path}" >&2
+    printf 'Current owner/mode:\n' >&2
+    ls -ld "${bad_path}" >&2 || true
+    printf 'Fix ownership, then rerun: sudo chown -R %s:%s %s\n' "${owner}" "${group}" "$(quote_shell "${dir}")" >&2
     exit 1
   fi
 }
 
 check_generated_dirs_writable() {
-  check_writable_dir "${APP_DIR}/_build"
-  check_writable_dir "${APP_DIR}/deps"
-  check_writable_dir "${APP_DIR}/priv/static"
+  check_generated_dir_writable "${APP_DIR}/_build"
+  check_generated_dir_writable "${APP_DIR}/deps"
+  check_generated_dir_writable "${APP_DIR}/priv/static"
 }
 
 SERVICE_NAME=${SERVICE_NAME:-unfinal}
