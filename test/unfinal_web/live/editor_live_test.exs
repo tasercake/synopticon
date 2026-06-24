@@ -64,8 +64,8 @@ defmodule UnfinalWeb.EditorLiveTest do
     assert html =~ ~s(<article id="readonly-document")
     refute html =~ "<textarea"
     assert html =~ "Unfinal"
-    assert html =~ ~s(<footer id="login-bar")
-    assert html =~ "readonly live view"
+    assert html =~ ~s(id="login-bar")
+    assert html =~ "Read only"
     assert html =~ "Login to edit"
     assert html =~ ~s(href="/login?return_to=%2Fn%2Fnotes")
   end
@@ -137,7 +137,7 @@ defmodule UnfinalWeb.EditorLiveTest do
     refute html =~ "/n/alpha/bluebird"
   end
 
-  test "claimed user sees generated blank page links under namespace", %{conn: conn} do
+  test "claimed user sees generated pages and inline new page row under namespace", %{conn: conn} do
     :ok = NamespaceStore.claim("alpha", %{"id" => "owner", "email" => "owner@example.com"})
     with_blank_page_paths(["bluebird", "rainriver", "moonstone", "greenfield", "sunwind"])
     conn = logged_in(conn, "different-owner-id", "owner@example.com")
@@ -145,12 +145,20 @@ defmodule UnfinalWeb.EditorLiveTest do
     {:ok, view, _html} = live(conn, "/n/alpha")
     rendered = render(view)
 
-    assert rendered =~ "Write somewhere new"
+    assert rendered =~ "Pages"
+    refute rendered =~ "Write somewhere new"
     assert rendered =~ ~s(href="/n/alpha/bluebird")
+    assert rendered =~ ~s(id="new-page-form")
+    assert rendered =~ ~s(phx-submit="open_new_page")
+    assert rendered =~ ~s(name="path")
 
-    links = rendered |> Floki.parse_document!() |> Floki.find("#blank-page-links a")
+    assert {:error, {:live_redirect, %{to: "/n/alpha/new-page"}}} =
+             view |> form("#new-page-form", %{path: "new-page"}) |> render_submit()
 
-    assert length(links) == 5
+    links = rendered |> Floki.parse_document!() |> Floki.find("#pages-nav a")
+
+    assert length(links) == 6
+    assert links |> Floki.text() =~ "/alpha"
     assert links |> Floki.text() =~ "/alpha/bluebird"
     refute links |> Floki.text() =~ "/n/alpha/bluebird"
   end

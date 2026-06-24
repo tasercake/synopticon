@@ -70,6 +70,23 @@ defmodule UnfinalWeb.EditorLive do
 
   def handle_event("save", _params, socket), do: {:noreply, socket}
 
+  def handle_event(
+        "open_new_page",
+        %{"path" => path},
+        %{assigns: %{claimed_namespace: namespace}} = socket
+      )
+      when is_binary(namespace) do
+    slug = path |> String.trim() |> String.trim_leading("/")
+
+    if DocumentPath.valid_segments?([namespace, slug]) do
+      {:noreply, push_navigate(socket, to: namespace_path(namespace, slug))}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("open_new_page", _params, socket), do: {:noreply, socket}
+
   @impl true
   def handle_info(
         {:content_updated, storage_path, %{revision: incoming_revision}},
@@ -159,19 +176,88 @@ defmodule UnfinalWeb.EditorLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <div class="h-dvh min-h-dvh overflow-hidden bg-stone-50 text-center text-stone-950 [font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe_UI',sans-serif]">
-      <div class="mx-auto grid h-full min-h-0 w-full max-w-[76rem] grid-cols-1 gap-4 px-4 lg:grid-cols-[12rem_minmax(0,52rem)_12rem]">
-        <div class="hidden lg:block" aria-hidden="true"></div>
+    <div class="h-dvh min-h-dvh overflow-hidden bg-stone-50 text-stone-950 [font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe_UI',sans-serif]">
+      <div class="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden lg:grid-cols-[15rem_minmax(0,1fr)] lg:grid-rows-1">
+        <aside class="flex max-h-72 min-h-0 flex-col border-r border-stone-200/70 bg-stone-100 px-4 py-4 text-left lg:max-h-none">
+          <h1 class="text-[15px] font-semibold tracking-tight">Unfinal</h1>
 
-        <main class="flex h-full min-h-0 w-full max-w-[52rem] flex-col gap-4 justify-self-center py-4 sm:py-6">
-          <header class="shrink-0 border-b border-stone-200 pb-4">
-            <h1 class="text-3xl font-semibold tracking-tight">Unfinal</h1>
+          <nav id="pages-nav" class="mt-7 text-sm" aria-label="Pages">
+            <h2 class="mb-2 text-[11px] font-medium uppercase tracking-[0.14em] text-stone-400">
+              Pages
+            </h2>
+            <a
+              class="block rounded-lg bg-white/70 px-3 py-2 font-medium shadow-sm shadow-stone-200/50"
+              href={@path}
+            >
+              {display_blank_page_path(@path)}
+            </a>
+
+            <div class="mt-2 space-y-1 text-stone-500">
+              <a
+                :for={path <- @blank_page_paths}
+                class="block rounded-lg px-3 py-1.5 hover:bg-white/50 hover:text-stone-950"
+                href={path}
+              >
+                {display_blank_page_path(path)}
+              </a>
+
+              <.form
+                :if={is_binary(@claimed_namespace)}
+                for={%{}}
+                id="new-page-form"
+                phx-submit="open_new_page"
+                class="pt-1"
+              >
+                <label class="sr-only" for="new-page-path">New page path</label>
+                <div class="group flex items-center rounded-lg px-3 py-1.5 text-stone-400 hover:bg-white/50 focus-within:bg-white/70 focus-within:text-stone-950 focus-within:shadow-sm focus-within:shadow-stone-200/50">
+                  <span class="mr-1 text-stone-300 group-focus-within:text-stone-400">+</span>
+                  <span class="text-stone-300 group-focus-within:text-stone-400">/{@claimed_namespace}/</span>
+                  <input
+                    id="new-page-path"
+                    name="path"
+                    class="min-w-0 flex-1 bg-transparent outline-none placeholder:text-stone-300"
+                    placeholder="new-page"
+                  />
+                </div>
+                <button class="sr-only" type="submit">Open new page</button>
+              </.form>
+            </div>
+          </nav>
+
+          <section id="login-bar" class="mt-auto shrink-0 border-t border-stone-200/80 pt-4 text-sm">
+            <div class="mb-2 text-[11px] font-medium uppercase tracking-[0.14em] text-stone-400">
+              Account
+            </div>
+            <a
+              :if={@show_claim_link?}
+              id="claim-page-link"
+              class="mb-3 block rounded-lg bg-white/70 px-3 py-2 font-medium text-stone-900 shadow-sm shadow-stone-200/50 ring-1 ring-stone-200/60 hover:bg-white"
+              href={~p"/claim"}
+            >Claim your page</a>
+            <a
+              :if={!@authenticated}
+              class="underline underline-offset-4"
+              href={~p"/login?return_to=#{@path}"}
+            >Login to edit</a>
+            <div :if={@authenticated}>
+              <p class="truncate text-stone-700">{@user["email"]}</p>
+              <a
+                id="logout-link"
+                class="mt-1 inline-block text-stone-500 underline underline-offset-4 hover:text-stone-950"
+                href={~p"/logout?return_to=#{@path}"}
+              >Logout</a>
+            </div>
+          </section>
+        </aside>
+
+        <main class="flex min-h-0 min-w-0 flex-col">
+          <header class="relative flex h-11 shrink-0 items-center px-6 text-xs text-stone-400">
+            <div class="truncate">{@path}</div>
+            <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[11px] uppercase tracking-[0.18em] text-stone-300">
+              <span :if={@writer?}>Live</span>
+              <span :if={!@writer?}>Read only</span>
+            </div>
           </header>
-
-          <div class="flex shrink-0 flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs uppercase tracking-wide text-stone-500">
-            <span :if={@writer?}>live editing</span>
-            <span :if={!@writer?}>readonly live view</span>
-          </div>
 
           <.form
             :if={@writer?}
@@ -183,60 +269,17 @@ defmodule UnfinalWeb.EditorLive do
           >
             <textarea
               name="content"
-              class="h-full min-h-0 flex-1 resize-none overflow-y-auto border border-stone-200 bg-white p-5 text-left text-lg leading-8 shadow-sm outline-none focus:border-stone-400 focus:ring-2 focus:ring-stone-200"
+              class="h-full min-h-0 w-full flex-1 resize-none overflow-y-auto bg-transparent px-[clamp(2rem,7vw,7rem)] py-10 text-left text-[22px] leading-10 outline-none placeholder:text-stone-300"
             ><%= @content %></textarea>
           </.form>
 
           <article
             :if={!@writer?}
             id="readonly-document"
-            class="h-full min-h-0 flex-1 overflow-y-auto whitespace-pre-wrap border border-stone-200 bg-white p-5 text-left text-lg leading-8 shadow-sm"
+            class="h-full min-h-0 flex-1 overflow-y-auto whitespace-pre-wrap bg-transparent px-[clamp(2rem,7vw,7rem)] py-10 text-left text-[22px] leading-10"
             phx-no-format
           ><%= @content %></article>
-
-          <footer id="login-bar" class="shrink-0 pt-4 text-sm text-stone-600">
-            <a
-              :if={!@authenticated}
-              class="underline underline-offset-4"
-              href={~p"/login?return_to=#{@path}"}
-            >Login to edit</a>
-            <span :if={@authenticated} class="inline-flex items-center gap-1 whitespace-nowrap">
-              <span>Logged in as {@user["email"]} •</span>
-              <a
-                id="logout-link"
-                class="underline underline-offset-4"
-                href={~p"/logout?return_to=#{@path}"}
-              >Logout</a>
-            </span>
-          </footer>
         </main>
-
-        <aside
-          :if={@show_claim_link?}
-          id="claim-page-link"
-          class="hidden py-6 text-left text-sm text-stone-600 lg:block"
-        >
-          <a class="underline underline-offset-4 hover:text-stone-950" href={~p"/claim"}>Claim your page</a>
-        </aside>
-
-        <aside
-          :if={@blank_page_paths != []}
-          id="blank-page-links"
-          class="hidden py-6 text-left text-sm text-stone-600 lg:block"
-        >
-          <h2 class="mb-3 text-xs font-semibold uppercase tracking-wide text-stone-500">
-            Write somewhere new
-          </h2>
-          <nav aria-label="Blank pages">
-            <ul class="space-y-2">
-              <li :for={path <- @blank_page_paths}>
-                <a class="underline underline-offset-4 hover:text-stone-950" href={path}>
-                  {display_blank_page_path(path)}
-                </a>
-              </li>
-            </ul>
-          </nav>
-        </aside>
       </div>
     </div>
     """
