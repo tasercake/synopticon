@@ -42,7 +42,8 @@ defmodule UnfinalWeb.EditorLive do
         writer?: writer?,
         show_claim_link?: show_claim_link?(session, claimed_namespace),
         show_pages_nav?: show_pages_nav?(segments),
-        page_paths: if(connected?(socket), do: page_paths(segments, claimed_namespace), else: [])
+        page_paths:
+          if(connected?(socket), do: page_paths(segments, claimed_namespace, path), else: [])
       )
 
     {:ok, socket}
@@ -144,13 +145,15 @@ defmodule UnfinalWeb.EditorLive do
   defp show_pages_nav?([_namespace | _rest]), do: true
   defp show_pages_nav?([]), do: false
 
-  defp page_paths([namespace | _rest], claimed_namespace) when namespace == claimed_namespace do
+  defp page_paths([namespace | _rest], claimed_namespace, current_path)
+       when namespace == claimed_namespace do
     namespace
     |> PageIndex.list()
     |> Enum.map(&namespace_path(namespace, &1.path))
+    |> Enum.reject(&(&1 == current_path))
   end
 
-  defp page_paths(_segments, _claimed_namespace), do: []
+  defp page_paths(_segments, _claimed_namespace, _current_path), do: []
 
   defp namespace_path(namespace, path) do
     suffix = path |> String.trim() |> String.trim_leading("/")
