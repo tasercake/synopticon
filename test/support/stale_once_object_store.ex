@@ -55,7 +55,7 @@ defmodule Unfinal.StaleOnceObjectStore do
   end
 
   def start_link(_opts),
-    do: Agent.start_link(fn -> %{docs: %{}, stale_next?: true} end, name: __MODULE__)
+    do: Agent.start(fn -> %{docs: %{}, stale_next?: true} end, name: __MODULE__)
 
   defp missing(path),
     do: %Document{path: path, content: "", etag: nil, revision: 0, write_id: nil}

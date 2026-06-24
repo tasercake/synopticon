@@ -49,10 +49,14 @@ defmodule Unfinal.ContentStore do
 
   @spec clear() :: :ok
   def clear do
-    for {_id, pid, _type, _modules} <-
-          DynamicSupervisor.which_children(Unfinal.DocumentSupervisor) do
-      DynamicSupervisor.terminate_child(Unfinal.DocumentSupervisor, pid)
-    end
+    Unfinal.DocumentSupervisor
+    |> DynamicSupervisor.which_children()
+    |> Enum.map(fn {_id, pid, _type, _modules} -> {pid, Process.monitor(pid)} end)
+    |> Enum.each(fn {pid, monitor_ref} ->
+      _result = DynamicSupervisor.terminate_child(Unfinal.DocumentSupervisor, pid)
+      wait_for_down(monitor_ref)
+      wait_for_unregistered(pid)
+    end)
 
     adapter().clear()
   end
@@ -93,6 +97,30 @@ defmodule Unfinal.ContentStore do
           {:ok, pid} -> {:ok, pid}
           {:error, {:already_started, pid}} -> {:ok, pid}
         end
+    end
+  end
+
+  @spec wait_for_down(reference()) :: :ok
+  defp wait_for_down(monitor_ref) do
+    receive do
+      {:DOWN, ^monitor_ref, :process, _pid, _reason} -> :ok
+    after
+      5_000 -> :ok
+    end
+  end
+
+  @spec wait_for_unregistered(pid(), non_neg_integer()) :: :ok
+  defp wait_for_unregistered(pid, attempts \\ 50)
+  defp wait_for_unregistered(_pid, 0), do: :ok
+
+  defp wait_for_unregistered(pid, attempts) do
+    case Registry.keys(Unfinal.DocumentRegistry, pid) do
+      [] ->
+        :ok
+
+      _keys ->
+        Process.sleep(10)
+        wait_for_unregistered(pid, attempts - 1)
     end
   end
 

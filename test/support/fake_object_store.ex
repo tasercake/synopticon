@@ -42,7 +42,7 @@ defmodule Unfinal.FakeObjectStore do
     end
   end
 
-  def start_link(_opts), do: Agent.start_link(fn -> %{} end, name: __MODULE__)
+  def start_link(_opts), do: Agent.start(fn -> %{} end, name: __MODULE__)
 
   defp missing(path),
     do: %Document{path: path, content: "", etag: nil, revision: 0, write_id: nil}
