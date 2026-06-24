@@ -173,28 +173,12 @@ defmodule UnfinalWeb.EditorLive do
             <h2 class="mb-2 text-[11px] font-medium uppercase tracking-[0.14em] text-stone-400">
               Pages
             </h2>
-            <a
-              class="block rounded-lg bg-white/70 px-3 py-2 font-medium shadow-sm shadow-stone-200/50"
-              href={@path}
-            >
-              {display_page_path(@path)}
-            </a>
-
-            <div class="mt-2 space-y-1 text-stone-500">
-              <a
-                :for={path <- @page_paths}
-                class="block rounded-lg px-3 py-1.5 hover:bg-white/50 hover:text-stone-950"
-                href={path}
-              >
-                {display_page_path(path)}
-              </a>
-
+            <div class="space-y-1 text-stone-500">
               <.form
                 :if={is_binary(@claimed_namespace)}
                 for={%{}}
                 id="new-page-form"
                 phx-submit="open_new_page"
-                class="pt-1"
               >
                 <label class="sr-only" for="new-page-path">New page path</label>
                 <div class="group flex items-center rounded-lg px-3 py-1.5 text-stone-400 hover:bg-white/50 focus-within:bg-white/70 focus-within:text-stone-950 focus-within:shadow-sm focus-within:shadow-stone-200/50">
@@ -209,6 +193,21 @@ defmodule UnfinalWeb.EditorLive do
                 </div>
                 <button class="sr-only" type="submit">Open new page</button>
               </.form>
+
+              <a
+                class="block rounded-lg bg-white/70 px-3 py-2 font-medium text-stone-950 shadow-sm shadow-stone-200/50"
+                href={@path}
+              >
+                {display_page_path(@path)}
+              </a>
+
+              <a
+                :for={path <- @page_paths}
+                class="block rounded-lg px-3 py-1.5 hover:bg-white/50 hover:text-stone-950"
+                href={path}
+              >
+                {display_page_path(path)}
+              </a>
             </div>
           </nav>
 
