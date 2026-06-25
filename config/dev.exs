@@ -56,7 +56,7 @@ config :unfinal, UnfinalWeb.Endpoint,
 config :unfinal, dev_routes: true
 
 config :unfinal, :object_store_adapter, Unfinal.FilesystemObjectStore
-config :unfinal, :filesystem_object_store, write_delay_ms: 200
+config :unfinal, :filesystem_object_store, write_delay_ms: 1000
 
 # Do not include metadata nor timestamps in development logs
 config :logger, :console, format: "[$level] $message\n"
