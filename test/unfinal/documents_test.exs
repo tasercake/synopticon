@@ -1,6 +1,8 @@
 defmodule Unfinal.DocumentsTest do
   use ExUnit.Case, async: false
 
+  import ExUnit.CaptureLog
+
   alias Unfinal.ContentStore
   alias Unfinal.Documents
 
@@ -95,6 +97,24 @@ defmodule Unfinal.DocumentsTest do
 
     assert_receive {:content_updated, "/flaky", %{content: "eventual"}}, 500
     assert Documents.get("/flaky").content == "eventual"
+  end
+
+  test "crashed flush task keeps dirty content and retries latest content" do
+    Application.put_env(:unfinal, :object_store_adapter, Unfinal.CrashingOnceObjectStore)
+    Unfinal.CrashingOnceObjectStore.clear()
+    Unfinal.CrashingOnceObjectStore.crash_next_put()
+    Phoenix.PubSub.subscribe(Unfinal.PubSub, Documents.topic("/crashy"))
+
+    log =
+      capture_log(fn ->
+        assert :ok = Documents.queue_put("/crashy", "survives crash")
+        assert Documents.get("/crashy").content == "survives crash"
+
+        assert_receive {:content_updated, "/crashy", %{content: "survives crash"}}, 500
+      end)
+
+    assert log =~ "content flush task crashed for /crashy"
+    assert Documents.get("/crashy").content == "survives crash"
   end
 
   test "stale write result updates durable base and retries pending content" do
