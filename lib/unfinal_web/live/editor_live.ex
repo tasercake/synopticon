@@ -27,6 +27,9 @@ defmodule UnfinalWeb.EditorLive do
     if connected?(socket) and not writer?,
       do: Phoenix.PubSub.subscribe(Unfinal.PubSub, Documents.topic(storage_path))
 
+    if connected?(socket) and is_binary(viewed_namespace),
+      do: Phoenix.PubSub.subscribe(Unfinal.PubSub, PageIndex.topic(viewed_namespace))
+
     document = Documents.get(storage_path)
 
     socket =
@@ -63,7 +66,6 @@ defmodule UnfinalWeb.EditorLive do
         } = socket
       ) do
     :ok = Documents.queue_put(storage_path, content)
-    index_page(Map.get(socket.assigns, :claimed_namespace), storage_path)
     {:noreply, socket}
   end
 
@@ -114,6 +116,19 @@ defmodule UnfinalWeb.EditorLive do
      )}
   end
 
+  def handle_info(
+        {:page_index_updated, namespace, entries},
+        %{assigns: %{viewed_namespace: namespace, path: path}} = socket
+      ) do
+    {:noreply,
+     assign(socket,
+       root_page_path: root_page_path_from_entries(namespace, entries),
+       page_paths: page_paths_from_entries(namespace, entries, path)
+     )}
+  end
+
+  def handle_info({:page_index_updated, _namespace, _entries}, socket), do: {:noreply, socket}
+
   defp path_segments(%{"path" => parts}), do: parts
   defp path_segments(_params), do: []
 
@@ -153,23 +168,28 @@ defmodule UnfinalWeb.EditorLive do
   defp root_page_path([namespace], _current_path, _connected?), do: namespace_path(namespace, "/")
 
   defp root_page_path([namespace | _rest], _current_path, true) do
-    if Enum.any?(PageIndex.list(namespace), &(&1.path == "/")) do
-      namespace_path(namespace, "/")
-    end
+    root_page_path_from_entries(namespace, PageIndex.list(namespace))
   end
 
   defp root_page_path(_segments, _current_path, _connected?), do: nil
 
-  defp page_paths([namespace | _rest], _current_path) do
-    root_path = namespace_path(namespace, "/")
-
-    namespace
-    |> PageIndex.list()
-    |> Enum.map(&namespace_path(namespace, &1.path))
-    |> Enum.reject(&(&1 == root_path))
+  defp page_paths([namespace | _rest], current_path) do
+    page_paths_from_entries(namespace, PageIndex.list(namespace), current_path)
   end
 
   defp page_paths(_segments, _current_path), do: []
+
+  defp root_page_path_from_entries(namespace, entries) do
+    if Enum.any?(entries, &(&1.path == "/")), do: namespace_path(namespace, "/")
+  end
+
+  defp page_paths_from_entries(namespace, entries, _current_path) do
+    root_path = namespace_path(namespace, "/")
+
+    entries
+    |> Enum.map(&namespace_path(namespace, &1.path))
+    |> Enum.reject(&(&1 == root_path))
+  end
 
   defp namespace_path(namespace, "/"), do: "/n/#{namespace}"
 
@@ -180,21 +200,6 @@ defmodule UnfinalWeb.EditorLive do
 
   defp display_page_path("/n" <> path), do: path
   defp display_page_path(path), do: path
-
-  defp index_page(namespace, "/" <> path) when is_binary(namespace) do
-    case String.split(path, "/", parts: 2) do
-      [^namespace] ->
-        PageIndex.upsert(namespace, "/", DateTime.utc_now())
-
-      [^namespace, relative] when relative != "" ->
-        PageIndex.upsert(namespace, "/" <> relative, DateTime.utc_now())
-
-      _other ->
-        :ok
-    end
-  end
-
-  defp index_page(_namespace, _storage_path), do: :ok
 
   @impl true
   def render(assigns) do

@@ -4,14 +4,17 @@ defmodule UnfinalWeb.EditorLiveTest do
   alias Phoenix.LiveView.Socket
   alias Unfinal.Documents
   alias Unfinal.NamespaceStore
+  alias Unfinal.PageIndex
 
   setup do
     Application.put_env(:unfinal, :object_store_adapter, Unfinal.FakeObjectStore)
     Application.put_env(:unfinal, :content_store_flush_interval_ms, 10)
+    PageIndex.clear()
     Documents.clear()
     NamespaceStore.clear()
 
     on_exit(fn ->
+      PageIndex.clear()
       Documents.clear()
       NamespaceStore.clear()
       Application.delete_env(:unfinal, :content_store_flush_interval_ms)
@@ -285,6 +288,28 @@ defmodule UnfinalWeb.EditorLiveTest do
 
     assert_eventually(fn -> Documents.get("/alpha/notes").content == "indexed" end)
     assert [%{path: "/notes"}, %{path: "/"}] = Unfinal.PageIndex.list("alpha")
+  end
+
+  test "writer save ack does not wait for slow durable index I/O", %{conn: conn} do
+    Unfinal.BlockingIndexObjectStore.ensure_started()
+    Unfinal.BlockingIndexObjectStore.reset()
+    Unfinal.BlockingIndexObjectStore.set_parent(self())
+    Unfinal.BlockingIndexObjectStore.block_put_object(true)
+    Application.put_env(:unfinal, :object_store_adapter, Unfinal.BlockingIndexObjectStore)
+
+    :ok = NamespaceStore.claim("alpha", %{"id" => "owner", "email" => "owner@example.com"})
+    conn = logged_in(conn, "owner", "owner@example.com")
+
+    {:ok, view, _html} = live(conn, "/n/alpha/fast")
+
+    started_at = System.monotonic_time(:millisecond)
+    view |> form("form[phx-change=save]", %{content: "fast ack"}) |> render_change()
+    elapsed_ms = System.monotonic_time(:millisecond) - started_at
+
+    assert elapsed_ms < 100
+    assert_eventually(fn -> Documents.get("/alpha/fast").content == "fast ack" end)
+    assert_receive {:put_object_started, "indexes/namespaces/alpha.ndjson"}, 300
+    Unfinal.BlockingIndexObjectStore.release()
   end
 
   test "writer save queues without echoing content or durable metadata" do
