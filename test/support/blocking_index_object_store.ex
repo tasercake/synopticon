@@ -11,7 +11,7 @@ defmodule Unfinal.BlockingIndexObjectStore do
 
   def clear, do: Unfinal.FakeObjectStore.clear()
 
-  def get_object("indexes/" <> _rest = key) do
+  def get_object("indexes/namespaces/" <> _rest = key) do
     Agent.update(__MODULE__, &Map.update!(&1, :get_object_calls, fn calls -> [key | calls] end))
     block(:get_object)
     Unfinal.FakeObjectStore.get_object(key)
@@ -19,7 +19,7 @@ defmodule Unfinal.BlockingIndexObjectStore do
 
   def get_object(key), do: Unfinal.FakeObjectStore.get_object(key)
 
-  def put_object("indexes/" <> _rest = key, content) do
+  def put_object("indexes/namespaces/" <> _rest = key, content) do
     Agent.update(__MODULE__, &Map.update!(&1, :put_object_calls, fn calls -> [key | calls] end))
     send(parent(), {:put_object_started, key})
     block(:put_object)
