@@ -94,14 +94,18 @@ defmodule Unfinal.DocumentsTest do
 
     assert :ok = Documents.queue_put("/blank", "   \n\t")
     assert_receive {:content_updated, "/blank", %{content: "   \n\t", revision: 2}}, 300
+
     assert {:ok, %ContentStore.Document{content: "   \n\t", revision: 2, etag: etag}} =
              Unfinal.FakeObjectStore.get("/blank")
+
     assert is_binary(etag)
 
     assert :ok = Documents.queue_put("/blank", "")
     assert_receive {:content_updated, "/blank", %{content: "", revision: 3}}, 300
+
     assert {:ok, %ContentStore.Document{content: "", revision: 3, etag: etag}} =
              Unfinal.FakeObjectStore.get("/blank")
+
     assert is_binary(etag)
   end
 

@@ -1,41 +1,46 @@
 defmodule Unfinal.PageIndex do
-  @moduledoc "Namespace page index stored as NDJSON."
+  @moduledoc "Live namespace page index facade."
 
   alias Unfinal.DocumentPath
   alias Unfinal.ObjectIndex
 
+  @topic_prefix "page_index:"
+
   @type entry :: %{path: String.t(), updated_at: String.t()}
+
+  @spec topic(String.t()) :: String.t()
+  def topic(namespace), do: @topic_prefix <> Base.url_encode64(namespace, padding: false)
 
   @spec list(String.t()) :: [entry()]
   def list(namespace) when is_binary(namespace) do
-    namespace
-    |> key()
-    |> ObjectIndex.get()
-    |> case do
-      {:ok, content} -> parse(content)
-      {:error, :not_found} -> []
-      {:error, _reason} -> []
-    end
-    |> Enum.sort_by(& &1.updated_at, :desc)
+    if valid_namespace?(namespace), do: server_call(namespace, :list), else: []
   end
 
   @spec upsert(String.t(), String.t(), DateTime.t()) :: :ok | {:error, term()}
   def upsert(namespace, path, %DateTime{} = updated_at)
       when is_binary(namespace) and is_binary(path) do
-    if DocumentPath.valid_segment?(namespace) and valid_relative_path?(path) do
-      entries =
-        namespace
-        |> list()
-        |> Enum.reject(&(&1.path == path))
-
-      write(namespace, [%{path: path, updated_at: DateTime.to_iso8601(updated_at)} | entries])
+    if valid_namespace?(namespace) and valid_relative_path?(path) do
+      server_call(namespace, {:upsert, path, updated_at})
     else
       {:error, :invalid}
     end
   end
 
+  @spec clear() :: :ok
+  def clear do
+    Unfinal.PageIndexSupervisor
+    |> DynamicSupervisor.which_children()
+    |> Enum.map(fn {_id, pid, _type, _modules} -> {pid, Process.monitor(pid)} end)
+    |> Enum.each(fn {pid, monitor_ref} ->
+      _result = DynamicSupervisor.terminate_child(Unfinal.PageIndexSupervisor, pid)
+      wait_for_down(monitor_ref)
+    end)
+
+    :ok
+  end
+
   @spec parse(String.t()) :: [entry()]
-  defp parse(content) do
+  def parse(content) do
     content
     |> String.split(["\r\n", "\n", "\r"], trim: true)
     |> Enum.flat_map(fn line ->
@@ -47,10 +52,11 @@ defmodule Unfinal.PageIndex do
         _ -> []
       end
     end)
+    |> Enum.sort_by(& &1.updated_at, :desc)
   end
 
   @spec write(String.t(), [entry()]) :: :ok | {:error, term()}
-  defp write(namespace, entries) do
+  def write(namespace, entries) do
     content =
       entries
       |> Enum.sort_by(& &1.updated_at, :desc)
@@ -61,15 +67,46 @@ defmodule Unfinal.PageIndex do
     ObjectIndex.put(key(namespace), content)
   end
 
-  @spec valid_relative_path?(term()) :: boolean()
-  defp valid_relative_path?("/"), do: true
+  @spec key(String.t()) :: String.t()
+  def key(namespace), do: "indexes/namespaces/#{namespace}.ndjson"
 
-  defp valid_relative_path?("/" <> rest) when rest != "" do
+  @spec valid_relative_path?(term()) :: boolean()
+  def valid_relative_path?("/"), do: true
+
+  def valid_relative_path?("/" <> rest) when rest != "" do
     rest |> String.split("/") |> DocumentPath.valid_segments?()
   end
 
-  defp valid_relative_path?(_path), do: false
+  def valid_relative_path?(_path), do: false
 
-  @spec key(String.t()) :: String.t()
-  defp key(namespace), do: "indexes/namespaces/#{namespace}.ndjson"
+  defp valid_namespace?(namespace), do: DocumentPath.valid_segment?(namespace)
+
+  defp server_call(namespace, message) do
+    {:ok, pid} = server(namespace)
+    GenServer.call(pid, message)
+  end
+
+  defp server(namespace) do
+    case Registry.lookup(Unfinal.PageIndexRegistry, namespace) do
+      [{pid, _value}] ->
+        {:ok, pid}
+
+      [] ->
+        case DynamicSupervisor.start_child(
+               Unfinal.PageIndexSupervisor,
+               {Unfinal.PageIndexServer, namespace}
+             ) do
+          {:ok, pid} -> {:ok, pid}
+          {:error, {:already_started, pid}} -> {:ok, pid}
+        end
+    end
+  end
+
+  defp wait_for_down(monitor_ref) do
+    receive do
+      {:DOWN, ^monitor_ref, :process, _pid, _reason} -> :ok
+    after
+      5_000 -> :ok
+    end
+  end
 end
