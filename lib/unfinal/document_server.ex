@@ -13,6 +13,7 @@ defmodule Unfinal.DocumentServer do
   alias Unfinal.ContentStore
   alias Unfinal.ContentStore.Document
   alias Unfinal.Documents
+  alias Unfinal.PageIndex
 
   @initial_retry_ms 25
   @max_retry_ms 1_000
@@ -78,6 +79,8 @@ defmodule Unfinal.DocumentServer do
           dirty_content: content
       }
       |> schedule_flush(ContentStore.flush_interval_ms())
+
+    upsert_page_index(state.path)
 
     {:reply, :ok, state}
   end
@@ -190,6 +193,21 @@ defmodule Unfinal.DocumentServer do
   end
 
   defp schedule_flush(state, _delay_ms), do: state
+
+  defp upsert_page_index("/" <> path) do
+    case String.split(path, "/", parts: 2) do
+      [namespace] ->
+        PageIndex.upsert(namespace, "/", DateTime.utc_now())
+
+      [namespace, relative] when relative != "" ->
+        PageIndex.upsert(namespace, "/" <> relative, DateTime.utc_now())
+
+      _other ->
+        :ok
+    end
+  end
+
+  defp upsert_page_index(_path), do: :ok
 
   defp broadcast(path, doc) do
     Phoenix.PubSub.broadcast(Unfinal.PubSub, Documents.topic(path), {

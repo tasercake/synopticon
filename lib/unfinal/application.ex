@@ -16,6 +16,9 @@ defmodule Unfinal.Application do
       {Registry, keys: :unique, name: Unfinal.DocumentRegistry},
       {DynamicSupervisor, strategy: :one_for_one, name: Unfinal.DocumentSupervisor},
       {Task.Supervisor, name: Unfinal.DocumentTaskSupervisor},
+      {Registry, keys: :unique, name: Unfinal.PageIndexRegistry},
+      {DynamicSupervisor, strategy: :one_for_one, name: Unfinal.PageIndexSupervisor},
+      {Task.Supervisor, name: Unfinal.PageIndexTaskSupervisor},
       Unfinal.NamespaceStore,
       # Start to serve requests, typically the last entry
       UnfinalWeb.Endpoint
