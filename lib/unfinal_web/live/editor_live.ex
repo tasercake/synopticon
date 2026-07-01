@@ -207,7 +207,7 @@ defmodule UnfinalWeb.EditorLive do
     <div class="h-dvh min-h-dvh overflow-hidden bg-stone-50 text-stone-950 [font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe_UI',sans-serif]">
       <div class="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden lg:grid-cols-[15rem_minmax(0,1fr)] lg:grid-rows-1">
         <aside class="flex max-h-72 min-h-0 flex-col border-r border-stone-200/70 bg-stone-100 px-4 py-4 text-left lg:max-h-none">
-          <h1 class="text-[15px] font-semibold tracking-tight">Unfinal</h1>
+          <a href="/" class="text-[15px] font-semibold tracking-tight hover:opacity-80">Unfinal</a>
 
           <nav :if={@show_pages_nav?} id="pages-nav" class="mt-7 text-sm" aria-label="Pages">
             <h2 class="mb-2 text-[11px] font-medium uppercase tracking-[0.14em] text-stone-400">
@@ -294,6 +294,10 @@ defmodule UnfinalWeb.EditorLive do
             >Login to edit</a>
             <div :if={@authenticated}>
               <p class="truncate text-stone-700">{@user["email"]}</p>
+              <a
+                class="mt-1 block text-stone-600 underline underline-offset-4 hover:text-stone-950"
+                href={if @claimed_namespace, do: "/n/#{@claimed_namespace}", else: "/claim"}
+              >My notebook</a>
               <a
                 id="logout-link"
                 class="mt-1 inline-block text-stone-500 underline underline-offset-4 hover:text-stone-950"
