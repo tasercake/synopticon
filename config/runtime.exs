@@ -51,16 +51,6 @@ if System.get_env("UNFINAL_ALLOW_R2_ARCHIVE_READ") == "true" do
   config :unfinal, :allow_r2_archive_read?, true
 end
 
-# Phase 6 boot guard: fail fast if any R2 dual-write/fallback flag is enabled.
-# These flags are no longer supported by the normal app path.
-if System.get_env("UNFINAL_R2_DUAL_WRITE") in ~w(true 1 yes) do
-  raise "UNFINAL_R2_DUAL_WRITE is not supported after Phase 6 cutover. R2 is read-only archive. Remove this flag from your environment."
-end
-
-if System.get_env("UNFINAL_R2_READ_FALLBACK") in ~w(true 1 yes) do
-  raise "UNFINAL_R2_READ_FALLBACK is not supported after Phase 6 cutover. R2 is read-only archive. Remove this flag from your environment."
-end
-
 if config_env() == :prod do
   # The secret key base is used to sign/encrypt cookies and other secrets.
   # A default value is used in config/dev.exs and config/test.exs but you

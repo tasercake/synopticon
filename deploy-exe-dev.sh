@@ -202,26 +202,6 @@ fi
 
 load_env_file
 
-# ── Phase 6 boot guard: reject dual-write/fallback flags ────────────────────
-
-log "Phase 6 deploy guard"
-if [[ "${UNFINAL_R2_DUAL_WRITE:-}" == "true" || "${UNFINAL_R2_DUAL_WRITE:-}" == "1" || "${UNFINAL_R2_DUAL_WRITE:-}" == "yes" ]]; then
-  printf 'UNFINAL_R2_DUAL_WRITE is set to a truthy value. Phase 6 forbids dual-write. Remove this flag from %s\n' "${ENV_FILE}" >&2
-  exit 1
-fi
-
-if [[ "${UNFINAL_R2_READ_FALLBACK:-}" == "true" || "${UNFINAL_R2_READ_FALLBACK:-}" == "1" || "${UNFINAL_R2_READ_FALLBACK:-}" == "yes" ]]; then
-  printf 'UNFINAL_R2_READ_FALLBACK is set to a truthy value. Phase 6 forbids read fallback. Remove this flag from %s\n' "${ENV_FILE}" >&2
-  exit 1
-fi
-
-if [[ -n "${UNFINAL_STORAGE_MODE:-}" && "${UNFINAL_STORAGE_MODE}" != "sqlite" ]]; then
-  printf 'UNFINAL_STORAGE_MODE must be sqlite (got: %s). Phase 6 uses SQLite only.\n' "${UNFINAL_STORAGE_MODE}" >&2
-  exit 1
-fi
-
-log "Phase 6 guard passed: SQLite-only, no dual-write/fallback"
-
 log "fetch deps"
 mix deps.get --only prod
 
