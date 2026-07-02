@@ -10,7 +10,7 @@ defmodule Unfinal.NamespaceStoreTest do
 
     # Ensure NamespaceStore GenServer is in SQLite-primary mode
     :sys.replace_state(NamespaceStore, fn _state ->
-      %{sqlite_primary: true, r2_state: %{}}
+      %{sqlite_primary: true}
     end)
 
     Unfinal.Documents.clear()
@@ -26,12 +26,6 @@ defmodule Unfinal.NamespaceStoreTest do
     end)
 
     :ok
-  end
-
-  # Helper: switch NamespaceStore to R2 mode for legacy tests
-  defp switch_to_r2_mode! do
-    StorageModeHelper.set_storage_mode!(:r2)
-    :sys.replace_state(NamespaceStore, fn _state -> %{sqlite_primary: false, r2_state: %{}} end)
   end
 
   test "validates strict lowercase alphanumeric hyphen namespaces" do
@@ -55,28 +49,19 @@ defmodule Unfinal.NamespaceStoreTest do
   end
 
   test "prevents taken namespaces and second claims by same email" do
-    assert :ok = NamespaceStore.claim("alpha", %{"email" => "one@example.com"})
+    assert :ok = NamespaceStore.claim("alpha", %{"id" => "user_1", "email" => "one@example.com"})
 
     assert {:error, :taken} =
-             NamespaceStore.claim("alpha", %{"email" => "two@example.com"})
+             NamespaceStore.claim("alpha", %{"id" => "user_2", "email" => "two@example.com"})
 
     assert {:error, :already_claimed} =
-             NamespaceStore.claim("beta", %{"email" => "one@example.com"})
-  end
-
-  test "claim in R2 mode does not crash despite ObjectIndex being read-only" do
-    switch_to_r2_mode!()
-
-    # claim succeeds (in-memory r2_state is updated; ObjectIndex write is a no-op)
-    assert NamespaceStore.claim("alpha1", %{"email" => "one@example.com"}) == :ok
-  after
-    StorageModeHelper.set_storage_mode!(:sqlite)
+             NamespaceStore.claim("beta", %{"id" => "user_1", "email" => "one@example.com"})
   end
 
   # -- SQLite-primary mode tests --
 
   test "claim inserts into SQLite in SQLite-primary mode" do
-    assert :ok = NamespaceStore.claim("sqlite-ns", %{"email" => "sqlite@example.com"})
+    assert :ok = NamespaceStore.claim("sqlite-ns", %{"id" => "user_sqlite", "email" => "sqlite@example.com"})
 
     # Verify SQLite has the claim
     {:ok, %{rows: rows}} =
@@ -88,43 +73,43 @@ defmodule Unfinal.NamespaceStoreTest do
     assert [["sqlite-ns", "sqlite@example.com"]] = rows
 
     # Verify owner lookup works
-    assert NamespaceStore.owner("sqlite-ns") == %{email: "sqlite@example.com"}
+    assert NamespaceStore.owner("sqlite-ns") == %{user_id: "user_sqlite"}
   after
     Unfinal.Repo.query("DELETE FROM namespace_claims WHERE namespace = ?1", ["sqlite-ns"])
   end
 
   test "duplicate namespace returns :taken in SQLite-primary mode" do
-    assert :ok = NamespaceStore.claim("taken-ns", %{"email" => "first@example.com"})
+    assert :ok = NamespaceStore.claim("taken-ns", %{"id" => "user_first", "email" => "first@example.com"})
 
     assert {:error, :taken} =
-             NamespaceStore.claim("taken-ns", %{"email" => "second@example.com"})
+             NamespaceStore.claim("taken-ns", %{"id" => "user_second", "email" => "second@example.com"})
   after
     Unfinal.Repo.query("DELETE FROM namespace_claims WHERE namespace = ?1", ["taken-ns"])
   end
 
   test "duplicate email returns :already_claimed in SQLite-primary mode" do
-    assert :ok = NamespaceStore.claim("ns-a", %{"email" => "dup@example.com"})
+    assert :ok = NamespaceStore.claim("ns-a", %{"id" => "user_dup", "email" => "dup@example.com"})
 
     assert {:error, :already_claimed} =
-             NamespaceStore.claim("ns-b", %{"email" => "dup@example.com"})
+             NamespaceStore.claim("ns-b", %{"id" => "user_dup", "email" => "dup@example.com"})
   after
     Unfinal.Repo.query("DELETE FROM namespace_claims WHERE namespace = ?1", ["ns-a"])
     Unfinal.Repo.query("DELETE FROM namespace_claims WHERE namespace = ?1", ["ns-b"])
   end
 
   test "namespace_for_email queries SQLite in SQLite-primary mode" do
-    assert :ok = NamespaceStore.claim("email-ns", %{"email" => "findme@example.com"})
-    assert NamespaceStore.namespace_for_email("findme@example.com") == "email-ns"
-    assert NamespaceStore.namespace_for_email("notfound@example.com") == nil
+    assert :ok = NamespaceStore.claim("email-ns", %{"id" => "user_findme", "email" => "findme@example.com"})
+    assert NamespaceStore.namespace_for_user_id("user_findme") == "email-ns"
+    assert NamespaceStore.namespace_for_user_id("notfound") == nil
   after
     Unfinal.Repo.query("DELETE FROM namespace_claims WHERE namespace = ?1", ["email-ns"])
   end
 
   test "SQLite-primary claim writes only to SQLite, no R2 index created" do
-    assert :ok = NamespaceStore.claim("only-sqlite", %{"email" => "only@example.com"})
+    assert :ok = NamespaceStore.claim("only-sqlite", %{"id" => "user_only", "email" => "only@example.com"})
 
     # Verify SQLite has the claim
-    assert NamespaceStore.owner("only-sqlite") == %{email: "only@example.com"}
+    assert NamespaceStore.owner("only-sqlite") == %{user_id: "user_only"}
 
     # Verify no R2 namespace index was created
     assert {:error, _} = Unfinal.ObjectIndex.get("indexes/namespaces.txt")
@@ -134,14 +119,14 @@ defmodule Unfinal.NamespaceStoreTest do
 
   test "SQLite-primary claim and lookup are idempotent and isolated" do
     # Claim a namespace
-    assert :ok = NamespaceStore.claim("iso-ns", %{"email" => "iso@example.com"})
+    assert :ok = NamespaceStore.claim("iso-ns", %{"id" => "user_iso", "email" => "iso@example.com"})
 
     # Owner lookup
-    assert NamespaceStore.owner("iso-ns") == %{email: "iso@example.com"}
+    assert NamespaceStore.owner("iso-ns") == %{user_id: "user_iso"}
     assert NamespaceStore.owner("nonexistent") == nil
 
-    # Email lookup
-    assert NamespaceStore.namespace_for_email("iso@example.com") == "iso-ns"
+    # User ID lookup
+    assert NamespaceStore.namespace_for_user_id("user_iso") == "iso-ns"
     assert NamespaceStore.taken?("iso-ns") == true
     assert NamespaceStore.taken?("nonexistent") == false
 

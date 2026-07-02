@@ -160,7 +160,7 @@ defmodule UnfinalWeb.SessionControllerTest do
     Application.put_env(:unfinal, :storage_mode, :sqlite)
     :sys.replace_state(Unfinal.NamespaceStore, fn state -> %{state | sqlite_primary: true} end)
     put_clerk_config()
-    :ok = NamespaceStore.claim("alpha", %{"email" => "user@example.com"})
+    :ok = NamespaceStore.claim("alpha", %{"id" => "user_123", "email" => "user@example.com"})
 
     conn =
       conn
@@ -175,7 +175,7 @@ defmodule UnfinalWeb.SessionControllerTest do
     assert get_session(conn, :authenticated) == true
   after
     Application.delete_env(:unfinal, :storage_mode)
-    :sys.replace_state(Unfinal.NamespaceStore, fn state -> %{state | sqlite_primary: false} end)
+    :sys.replace_state(Unfinal.NamespaceStore, fn state -> %{state | sqlite_primary: true} end)
     Unfinal.Repo.query("DELETE FROM namespace_claims", [])
   end
 

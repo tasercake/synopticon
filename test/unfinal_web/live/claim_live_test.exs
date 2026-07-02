@@ -19,8 +19,7 @@ defmodule UnfinalWeb.ClaimLiveTest do
     on_exit(fn ->
       NamespaceStore.clear()
       File.rm_rf!(data_dir)
-      # Switch back to R2 mode
-      :sys.replace_state(NamespaceStore, fn state -> %{state | sqlite_primary: false} end)
+      # Keep SQLite mode (R2 mode deleted)
 
       if previous_data_dir do
         System.put_env("UNFINAL_DATA_DIR", previous_data_dir)
@@ -61,13 +60,13 @@ defmodule UnfinalWeb.ClaimLiveTest do
              |> form("#claim-form", claim: %{namespace: "alpha1"})
              |> render_submit()
 
-    assert NamespaceStore.namespace_for_email("one@example.com") == "alpha1"
+    assert NamespaceStore.namespace_for_user_id("user-1") == "alpha1"
   end
 
   test "already claimed emails cannot change namespace", %{conn: conn} do
     :ok = NamespaceStore.claim("alpha", %{"id" => "user-1", "email" => "one@example.com"})
 
-    conn = logged_in(conn, "different-user-id", "one@example.com")
+    conn = logged_in(conn, "user-1", "one@example.com")
     {:ok, _view, html} = live(conn, ~p"/claim")
 
     assert html =~ "You already claimed"
